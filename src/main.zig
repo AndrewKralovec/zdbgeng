@@ -1,7 +1,6 @@
 const std = @import("std");
 const print = std.debug.print;
-const readCommand = @import("./utils/command.zig").readCommand;
-const bytlen = @import("./utils/strings.zig").bytlen;
+const readCommandLine = @import("./utils/command.zig").readCommandLine;
 const DbgEngExtension = @import("./core/debugger.zig").DbgEngExtension;
 const dbgeng = @import("./dbgeng/bindings.zig");
 
@@ -12,15 +11,14 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var cmd_buf = try readCommand(allocator);
-    const cmd_line = bytlen(&cmd_buf);
-    const target = cmd_buf[0..cmd_line];
+    const target = try readCommandLine(allocator);
+    defer allocator.free(target);
     print("target: {s}\n", .{target});
 
     var debugger = try DbgEngExtension.init(allocator);
     defer debugger.deinit();
 
-    debugger.createProcess(@ptrCast(&cmd_buf)) catch |err| {
+    debugger.createProcess(target.ptr) catch |err| {
         print("failed create process: {}\n", .{err});
         return;
     };
