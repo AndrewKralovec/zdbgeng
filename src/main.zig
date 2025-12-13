@@ -1,7 +1,7 @@
 const std = @import("std");
 const print = std.debug.print;
-const readCommand = @import("./command.zig").readCommand;
-const bytlen = @import("./util.zig").bytlen;
+const readCommand = @import("./utils/command.zig").readCommand;
+const bytlen = @import("./utils/strings.zig").bytlen;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
