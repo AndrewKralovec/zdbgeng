@@ -35,3 +35,4 @@ zig build test
 
 - The original windows debugger [blog series](https://www.timdbg.com/posts/writing-a-debugger-from-scratch-part-1/).
 - This [article](https://www.osronline.com/article.cfm^article=559.htm) was helpful in explaining the structure of DbgEng and how its COM interfaces fit together.
+- Microsoft [Input and Output]https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/using-input-and-output#output-callbacks callback docs
