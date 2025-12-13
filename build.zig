@@ -37,6 +37,7 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true, // Enable C library linking for @cImport
     });
 
     // Modules can depend on one another using the `std.Build.Module.addImport` function.
@@ -64,6 +65,10 @@ pub fn build(b: *std.Build) void {
         .name = "zdbgeng",
         .root_module = exe_mod,
     });
+
+    // Link against the DbgEng library (Windows Debugging Engine)
+    // https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/dbgeng/nn-dbgeng-idebugclient
+    exe.linkSystemLibrary("dbgeng");
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
