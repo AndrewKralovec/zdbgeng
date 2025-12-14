@@ -25,27 +25,6 @@ const IID_IUnknown = GUID{
     .Data4 = [_]u8{ 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 },
 };
 
-// Breakpoint type constants.
-const DEBUG_BREAKPOINT_CODE: u32 = 0;
-const DEBUG_BREAKPOINT_DATA: u32 = 1;
-
-// Breakpoint flag constants.
-const DEBUG_BREAKPOINT_ENABLED: u32 = 0x1;
-const DEBUG_BREAKPOINT_DEFERRED: u32 = 0x2;
-const DEBUG_BREAKPOINT_ONE_SHOT: u32 = 0x100;
-
-// Output mask constants.
-const DEBUG_OUTPUT_NORMAL: u32 = 0x00000001;
-const DEBUG_OUTPUT_ERROR: u32 = 0x00000002;
-const DEBUG_OUTPUT_WARNING: u32 = 0x00000004;
-const DEBUG_OUTPUT_VERBOSE: u32 = 0x00000008;
-const DEBUG_OUTPUT_PROMPT: u32 = 0x00000010;
-const DEBUG_OUTPUT_PROMPT_REGISTERS: u32 = 0x00000020;
-const DEBUG_OUTPUT_EXTENSION_WARNING: u32 = 0x00000040;
-const DEBUG_OUTPUT_DEBUGGEE: u32 = 0x00000080;
-const DEBUG_OUTPUT_DEBUGGEE_PROMPT: u32 = 0x00000100;
-const DEBUG_OUTPUT_SYMBOLS: u32 = 0x00000200;
-
 pub const IDebugOutputCallbacks = extern struct {
     lpVtbl: *const IDebugOutputCallbacksVtbl,
 };
@@ -141,23 +120,22 @@ pub const OutputCallbacksImpl = struct {
         _ = iface; // Discard self.
         const text_slice = std.mem.span(text); // Convert to slice for easier handling.
 
-        const prefix = if (mask & DEBUG_OUTPUT_ERROR != 0)
+        const prefix = if (mask & dbgeng.DEBUG_OUTPUT_ERROR != 0)
             "[ERROR] "
-        else if (mask & DEBUG_OUTPUT_WARNING != 0)
+        else if (mask & dbgeng.DEBUG_OUTPUT_WARNING != 0)
             "[WARNING] "
-        else if (mask & DEBUG_OUTPUT_VERBOSE != 0)
+        else if (mask & dbgeng.DEBUG_OUTPUT_VERBOSE != 0)
             "[VERBOSE] "
-        else if (mask & DEBUG_OUTPUT_PROMPT != 0)
+        else if (mask & dbgeng.DEBUG_OUTPUT_PROMPT != 0)
             "[PROMPT] "
-        else if (mask & DEBUG_OUTPUT_DEBUGGEE != 0)
+        else if (mask & dbgeng.DEBUG_OUTPUT_DEBUGGEE != 0)
             "[DEBUGGEE] "
-        else if (mask & DEBUG_OUTPUT_SYMBOLS != 0)
+        else if (mask & dbgeng.DEBUG_OUTPUT_SYMBOLS != 0)
             "[SYMBOLS] "
         else
-            "[INFO] ";
+            "";
 
         print("{s}{s}", .{ prefix, text_slice });
-
         return dbgeng.S_OK;
     }
 

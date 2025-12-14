@@ -22,5 +22,6 @@ pub fn readCommandLine(allocator: Allocator) ![:0]u8 {
         try cmdline.appendSlice(arg);
         if (needs_quotes) try cmdline.append('"');
     }
+    // return try allocator.dupeZ(u8, cmdline);
     return try cmdline.toOwnedSliceSentinel(0);
 }

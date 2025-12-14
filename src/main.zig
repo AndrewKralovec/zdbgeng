@@ -1,8 +1,9 @@
 const std = @import("std");
 const print = std.debug.print;
-const readCommandLine = @import("./utils/command.zig").readCommandLine;
+const readCommandLine = @import("./utils/cli.zig").readCommandLine;
+const replLoop = @import("./repl/loop.zig").replLoop;
 const DbgEngExtension = @import("./core/debugger.zig").DbgEngExtension;
-const dbgeng = @import("./dbgeng/bindings.zig");
+const INFINITE = @import("./dbgeng/bindings.zig").INFINITE;
 
 pub fn main() !void {
     print("************** zdbgeng **************\n", .{});
@@ -13,7 +14,6 @@ pub fn main() !void {
 
     const target = try readCommandLine(allocator);
     defer allocator.free(target);
-    print("target: {s}\n", .{target});
 
     var debugger = try DbgEngExtension.init(allocator);
     defer debugger.deinit();
@@ -22,8 +22,9 @@ pub fn main() !void {
         print("failed create process: {}\n", .{err});
         return;
     };
+    print("process created\n", .{});
 
-    debugger.waitForEvent(dbgeng.INFINITE) catch |err| {
+    debugger.waitForEvent(INFINITE) catch |err| {
         print("failed to wait for initial event: {}\n", .{err});
         return;
     };
@@ -32,4 +33,6 @@ pub fn main() !void {
     if (initial_status != .status_break) {
         print("unexpected initial execution status {any}\n", .{initial_status});
     }
+
+    try replLoop(allocator, &debugger);
 }

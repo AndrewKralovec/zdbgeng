@@ -67,7 +67,7 @@ pub const DbgEngExtension = struct {
         hr = client.?.lpVtbl.*.SetOutputCallbacks.?(client.?, callbacks_iface);
         if (hr != dbgeng.S_OK) {
             // Clean up the callbacks since we couldnt register them.
-            print("Warning: Failed to set output callbacks: 0x{x:0>8}\n", .{hr});
+            print("warning, failed to set output callbacks: 0x{x:0>8}\n", .{hr});
             allocator.destroy(callbacks);
             self.output_callbacks = null;
         } else {
@@ -81,6 +81,17 @@ pub const DbgEngExtension = struct {
     }
 
     pub fn deinit(self: *DbgEngExtension) void {
+        // NOTE: This needs to be called fist.
+        // Unregister output callbacks before releasing client.
+        if (self.output_callbacks) |_| {
+            if (self.client) |client| {
+                _ = client.lpVtbl.*.SetOutputCallbacks.?(client, null);
+            }
+            // NOTE: DbgEng calls Release() automatically when we set callbacks to null
+            // so we don't manually release here to avoid double frees.
+            self.output_callbacks = null;
+        }
+
         if (self.symbols) |symbols| {
             _ = symbols.lpVtbl.*.Release.?(symbols);
         }
@@ -111,6 +122,7 @@ pub const DbgEngExtension = struct {
     }
 
     /// Returns information about the execution status of the debugger engine.
+    /// https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/dbgeng/nf-dbgeng-idebugcontrol-getexecutionstatus
     pub fn executionStatus(self: *DbgEngExtension) !DebugStatus {
         var status: u32 = 0;
         const hr = self.control.?.lpVtbl.*.GetExecutionStatus.?(self.control.?, &status);
@@ -121,6 +133,8 @@ pub const DbgEngExtension = struct {
         return DebugStatus.from(status);
     }
 
+    /// Sets the execution status of the debugger engine. Actual execution will not occur until the next time WaitForEvent is called.
+    /// https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/dbgeng/nf-dbgeng-idebugcontrol-setexecutionstatus
     pub fn setExecutionStatus(self: *DbgEngExtension, status: u32) !void {
         const hr = self.control.?.lpVtbl.*.SetExecutionStatus.?(self.control.?, status);
         if (hr != dbgeng.S_OK) {
@@ -129,6 +143,8 @@ pub const DbgEngExtension = struct {
         }
     }
 
+    /// Executes the specified debugger commands.
+    /// https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/dbgeng/nf-dbgeng-idebugcontrol-execute
     pub fn executeCommand(self: *DbgEngExtension, command: [*:0]const u8) !void {
         const hr = self.control.?.lpVtbl.*.Execute.?(
             self.control.?,
@@ -142,6 +158,8 @@ pub const DbgEngExtension = struct {
         }
     }
 
+    /// Waits for an event that breaks into the debugger engine.
+    /// https://learn.microsoft.com/en-us/windows-hardware/drivers/ddi/dbgeng/nf-dbgeng-idebugcontrol-waitforevent
     pub fn waitForEvent(self: *DbgEngExtension, timeout_ms: u32) !void {
         const hr = self.control.?.lpVtbl.*.WaitForEvent.?(self.control.?, 0, timeout_ms);
         // S_OK means event occurred, S_FALSE means timeout
@@ -188,30 +206,27 @@ pub const DebugStatus = enum {
     /// Converts the u32 execution status code to a DebugStatus enum value.
     pub fn from(status: u32) DebugStatus {
         return switch (status) {
-            dbgeng.DEBUG_STATUS_NO_CHANGE => {
-                return DebugStatus.no_change;
-            },
-            dbgeng.DEBUG_STATUS_NO_DEBUGGEE => {
-                return DebugStatus.no_debuggee;
-            },
-            dbgeng.DEBUG_STATUS_STEP_OVER => {
-                return DebugStatus.step_over;
-            },
-            dbgeng.DEBUG_STATUS_STEP_INTO => {
-                return DebugStatus.step_into;
-            },
-            dbgeng.DEBUG_STATUS_STEP_BRANCH => {
-                return DebugStatus.step_branch;
-            },
-            dbgeng.DEBUG_STATUS_GO => {
-                return DebugStatus.go;
-            },
-            dbgeng.DEBUG_STATUS_BREAK => {
-                return DebugStatus.status_break;
-            },
-            else => {
-                return DebugStatus.unknown;
-            },
+            dbgeng.DEBUG_STATUS_NO_CHANGE => DebugStatus.no_change,
+            dbgeng.DEBUG_STATUS_NO_DEBUGGEE => DebugStatus.no_debuggee,
+            dbgeng.DEBUG_STATUS_STEP_OVER => DebugStatus.step_over,
+            dbgeng.DEBUG_STATUS_STEP_INTO => DebugStatus.step_into,
+            dbgeng.DEBUG_STATUS_STEP_BRANCH => DebugStatus.step_branch,
+            dbgeng.DEBUG_STATUS_GO => DebugStatus.go,
+            dbgeng.DEBUG_STATUS_BREAK => DebugStatus.status_break,
+            else => DebugStatus.unknown,
+        };
+    }
+    /// Converts the DebugStatus enum value to its corresponding u32 execution status code.
+    pub fn to(self: DebugStatus) u32 {
+        return switch (self) {
+            .no_change => dbgeng.DEBUG_STATUS_NO_CHANGE,
+            .no_debuggee => dbgeng.DEBUG_STATUS_NO_DEBUGGEE,
+            .step_over => dbgeng.DEBUG_STATUS_STEP_OVER,
+            .step_into => dbgeng.DEBUG_STATUS_STEP_INTO,
+            .step_branch => dbgeng.DEBUG_STATUS_STEP_BRANCH,
+            .go => dbgeng.DEBUG_STATUS_GO,
+            .status_break => dbgeng.DEBUG_STATUS_BREAK,
+            .unknown => 0xFFFFFFFF,
         };
     }
 };
